@@ -12,6 +12,7 @@ import { agentEnv, loadAgenda, loadKnowledgeBase, loadSystemPrompt, privacyNotic
 import { ensurePrivacyNotice, guardOutgoing } from "./guardrails";
 import { getOrCreateLead, leadForPrompt, type LeadRow } from "./lead";
 import { applyHandoff, executeTool, TOOL_DEFINITIONS, type ToolContext } from "./tools";
+import { effectiveMode, recepcionEnabled, refreshRecepcionInfo, REPLY_MODE_LABEL } from "@/lib/integrations/recepcion";
 import { buildTranscript, hasPendingCustomerMessages, type HistoryMessage } from "./transcript";
 
 export const AGENT_JOB = "agent_reply";
@@ -70,6 +71,27 @@ export async function runAgent(db: SupabaseClient, conversationId: string): Prom
     if (!conv) return { outcome: "skipped", reason: "conversación no encontrada", sent: 0 };
     if (!conv.agent_active || conv.status !== "bot") return { outcome: "skipped", reason: "agente pausado", sent: 0 };
     if (!windowState(conv.last_inbound_at as string | null).open) return { outcome: "skipped", reason: "ventana cerrada", sent: 0 };
+
+    // Recepción del encargo: el personal de Wink y los modos distintos de «asistente» no los atiende el asistente
+    if (recepcionEnabled()) {
+      const { data: rc } = await db.from("conversations").select("recepcion_kind, recepcion_mode, reply_mode_override, recepcion_checked_at").eq("id", conversationId).single();
+      let info = rc;
+      const stale = !rc?.recepcion_checked_at || Date.now() - new Date(rc.recepcion_checked_at as string).getTime() > 10 * 60_000;
+      if (stale) {
+        try {
+          const r = await refreshRecepcionInfo(db, conversationId, (conv.contact as unknown as { wa_id: string }).wa_id);
+          info = { recepcion_kind: r.kind, recepcion_mode: r.mode, reply_mode_override: rc?.reply_mode_override ?? null, recepcion_checked_at: new Date().toISOString() };
+        } catch (e) {
+          log.warn("agent.recepcion_lookup_failed", { error: e });
+        }
+      }
+      const mode = effectiveMode(info ?? {});
+      if (info?.recepcion_kind === "personal" || mode !== "asistente") {
+        const reason = info?.recepcion_kind === "personal" ? "personal de Wink" : `modo «${REPLY_MODE_LABEL[mode]}»`;
+        await db.from("conversations").update({ agent_active: false, status: "human", handoff_reason: info?.recepcion_kind === "personal" ? "personal_wink" : `modo_${mode}` }).eq("id", conversationId).eq("status", "bot");
+        return { outcome: "skipped", reason, sent: 0 };
+      }
+    }
 
     const contact = conv.contact as unknown as {
       id: string;

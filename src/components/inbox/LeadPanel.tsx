@@ -3,6 +3,7 @@
 import { FileText, Mic, X } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import { useSignedUrl } from "./hooks";
+import { RecepcionSection } from "./RecepcionSection";
 import { displayName, formatPhone, HANDOFF_LABEL, initials, LEAD_STATUS, PROJECT_LABEL, visitParts } from "./format";
 import type { Attachment, ConversationItem, EventItem, Lead, TeamMember } from "./types";
 
@@ -114,6 +115,8 @@ export function LeadPanel({ conv, lead, docs, events, team, onClose }: { conv: C
           {assignee && <span className="chip">Asignada a {assignee.full_name.split(" ")[0]}</span>}
         </div>
       </div>
+
+      <RecepcionSection conversationId={conv.id} />
 
       {lead?.visit_at && (
         <div className="section">

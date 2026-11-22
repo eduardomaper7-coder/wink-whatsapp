@@ -1,5 +1,6 @@
 import { log, maskPhone } from "@/lib/log";
 import { PUSH_JOB } from "@/lib/notify/constants";
+import { RECEPCION_FORWARD_JOB, recepcionEnabled } from "@/lib/integrations/recepcion";
 import { extractMessageValues, extractTemplateStatusUpdates, normalizeInbound, normalizeStatus } from "../parse";
 import type { WebhookPayload } from "../types";
 import type { InboundStore } from "./store";
@@ -139,6 +140,15 @@ export async function processWebhookPayload(
       // Conversación atendida por el equipo → notificación push a la persona asignada
       if (!isReaction && conversation.status === "human") {
         await store.enqueueJob(PUSH_JOB, { kind: "message", conversationId: conversation.id, messageId: inserted.id }, { dedupeKey: `push:${msg.waMessageId}`, maxAttempts: 3 });
+      }
+
+      // Recepción del encargo: ¿es personal de Wink o un cliente con expediente? (se decide en el trabajo)
+      if (!isReaction && recepcionEnabled()) {
+        await store.enqueueJob(
+          RECEPCION_FORWARD_JOB,
+          { conversationId: conversation.id },
+          { dedupeKey: `rcp:${msg.waMessageId}`, runAfter: new Date(Date.now() + (msg.media ? AGENT_DELAY_MEDIA_S : AGENT_DELAY_S) * 1000), maxAttempts: 8 },
+        );
       }
 
       // Agente: espera unos segundos por si el cliente sigue escribiendo (ráfagas).

@@ -1,4 +1,5 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
+import { RECEPCION_LEAD_JOB, recepcionEnabled } from "@/lib/integrations/recepcion";
 import { z } from "zod";
 import type { ToolDefinition } from "@/lib/ai/anthropic";
 import { findSlots, type Slot } from "@/lib/calendar/agenda";
@@ -334,6 +335,10 @@ async function reservarVisita(input: Record<string, unknown>, ctx: ToolContext):
   ctx.state.booked = true;
 
   await enqueueJob(ctx.db, BRIEFING_JOB, { leadId: ctx.lead.id }, { dedupeKey: `briefing:${ctx.lead.id}:${start.toISOString()}`, maxAttempts: 4 });
+  // Recepción del encargo: con la visita reservada, el cliente ya es un encargo → expediente técnico inicial
+  if (recepcionEnabled()) {
+    await enqueueJob(ctx.db, RECEPCION_LEAD_JOB, { leadId: ctx.lead.id }, { dedupeKey: `rcplead:${ctx.lead.id}:${start.toISOString()}`, runAfter: new Date(Date.now() + 5_000), maxAttempts: 8 });
+  }
   await ctx.db.from("events").insert({
     type: "visit.booked",
     actor: "agent",

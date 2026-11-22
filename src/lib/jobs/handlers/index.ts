@@ -15,6 +15,7 @@ import { transcribe, TranscriptionError, transcriptionEnabled } from "@/lib/tran
 import { PUSH_JOB } from "@/lib/notify/constants";
 import { runPushJob, type PushJob } from "@/lib/notify/triggers";
 import { enqueueJob, PermanentJobError, RetryLaterError } from "../queue";
+import { RECEPCION_FORWARD_JOB, RECEPCION_LEAD_JOB, runForwardJob, runLeadJob } from "@/lib/integrations/recepcion";
 
 export interface JobContext {
   db: SupabaseClient;
@@ -249,7 +250,29 @@ const pushHandler: JobHandler = {
   },
 };
 
+// ---------------------------------------------------------------------
+// Recepción del encargo: reenvío de mensajes y alta de expediente
+// ---------------------------------------------------------------------
+const recepcionForwardHandler: JobHandler = {
+  async run(p, { db }) {
+    await runForwardJob(db, String(p.conversationId));
+  },
+  async onDead(p, { db }, error) {
+    await db.from("events").insert({ type: "recepcion.failed", conversation_id: String(p.conversationId), data: { error: error.slice(0, 500) } });
+  },
+};
+const recepcionLeadHandler: JobHandler = {
+  async run(p, { db }) {
+    await runLeadJob(db, String(p.leadId));
+  },
+  async onDead(p, { db }, error) {
+    await db.from("events").insert({ type: "recepcion.lead_failed", lead_id: String(p.leadId), data: { error: error.slice(0, 500) } });
+  },
+};
+
 export const handlers: Record<string, JobHandler> = {
+  [RECEPCION_FORWARD_JOB]: recepcionForwardHandler,
+  [RECEPCION_LEAD_JOB]: recepcionLeadHandler,
   [JOB.PROCESS_WEBHOOK]: processWebhook,
   [JOB.DOWNLOAD_MEDIA]: downloadMediaHandler,
   [JOB.APPLY_STATUS]: applyStatus,
