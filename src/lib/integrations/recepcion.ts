@@ -219,7 +219,30 @@ export async function runForwardJob(db: SupabaseClient, conversationId: string):
   let projectCode = conv.staff_project_code as string | null;
   const fresh = conv.staff_project_at && Date.now() - new Date(conv.staff_project_at as string).getTime() < STAFF_PROJECT_TTL_MS;
 
-  if (chosenId.startsWith(PROJECT_OPTION_PREFIX) && lastIn && (!conv.staff_project_at || new Date(lastIn.created_at) > new Date(conv.staff_project_at as string))) {
+  // Código escrito a mano ("WNK-2026-0004") en un mensaje posterior a la última elección: manda siempre
+  const { data: lastText } = await db
+    .from("messages")
+    .select("content, created_at")
+    .eq("conversation_id", conversationId)
+    .eq("direction", "inbound")
+    .eq("type", "text")
+    .order("created_at", { ascending: false })
+    .limit(1)
+    .maybeSingle();
+  const typedCode = /WNK-\d{4}-\d{3,5}/i.exec(String((lastText?.content as Record<string, unknown> | null)?.body ?? ""))?.[0]?.toUpperCase();
+  const typedIsNew = !!lastText && (!conv.staff_project_at || new Date(lastText.created_at) > new Date(conv.staff_project_at as string));
+  const byTypedCode = typedCode && typedIsNew ? info.projectOptions.find((o) => o.code.toUpperCase() === typedCode) : undefined;
+  const choiceIsNew = chosenId.startsWith(PROJECT_OPTION_PREFIX) && lastIn && (!conv.staff_project_at || new Date(lastIn.created_at) > new Date(conv.staff_project_at as string));
+
+  if (byTypedCode && (!choiceIsNew || new Date(lastText!.created_at) > new Date(lastIn!.created_at))) {
+    projectId = byTypedCode.id;
+    projectCode = byTypedCode.code;
+    await db.from("conversations").update({ staff_project_id: projectId, staff_project_code: projectCode, staff_project_at: new Date().toISOString() }).eq("id", conversationId);
+    await sendMessage(db, { conversationId, author: "system", content: { type: "text", body: `Anotado ✅ Lo que envíes durante las próximas horas irá al expediente ${projectCode}.` } });
+  } else if (typedCode && typedIsNew && !byTypedCode) {
+    await sendMessage(db, { conversationId, author: "system", content: { type: "text", body: `No encuentro el expediente ${typedCode} entre los activos. Revisa el código o elige uno de la lista.` } });
+    projectId = null;
+  } else if (choiceIsNew) {
     const id = chosenId.slice(PROJECT_OPTION_PREFIX.length);
     const opt = info.projectOptions.find((o) => o.id === id);
     if (opt) {
@@ -230,12 +253,8 @@ export async function runForwardJob(db: SupabaseClient, conversationId: string):
     }
   } else if (!fresh) {
     projectId = null;
-    // Código escrito a mano: "WNK-2026-0001"
-    const { data: lastText } = await db.from("messages").select("content").eq("conversation_id", conversationId).eq("direction", "inbound").eq("type", "text").order("created_at", { ascending: false }).limit(1).maybeSingle();
-    const code = /WNK-\d{4}-\d{3,5}/i.exec(String((lastText?.content as Record<string, unknown> | null)?.body ?? ""))?.[0]?.toUpperCase();
-    const byCode = code ? info.projectOptions.find((o) => o.code.toUpperCase() === code) : undefined;
     const only = info.projectOptions.length === 1 ? info.projectOptions[0] : undefined;
-    const pick = byCode ?? only;
+    const pick = only;
     if (pick) {
       projectId = pick.id;
       projectCode = pick.code;
