@@ -164,8 +164,15 @@ export async function forwardPending(db: SupabaseClient, conversationId: string,
   if (stillProcessing && ageMs < 120_000) throw new RetryLaterError("Multimedia en proceso", 5_000);
 
   const last = pending[pending.length - 1]!;
-  const text = pending.map(messageText).filter(Boolean).join("\n");
-  const attachments = await signedAttachments(db, pending.map((m) => m.id));
+  // Un mensaje que solo es el código del expediente ("WNK-2026-0005") sirve para elegir, no es una nota
+  const isOnlyCode = (m: (typeof pending)[number]) => m.type === "text" && /^\s*WNK-\d{4}-\d{3,5}\s*$/i.test(String((m.content as Record<string, unknown> | null)?.body ?? ""));
+  const useful = pending.filter((m) => !isOnlyCode(m));
+  if (!useful.length) {
+    await db.from("conversations").update({ recepcion_forwarded_until: last.created_at }).eq("id", conversationId);
+    return 0;
+  }
+  const text = useful.map(messageText).filter(Boolean).join("\n");
+  const attachments = await signedAttachments(db, useful.map((m) => m.id));
   await recepcion.push({
     kind: "message",
     key: `wa:${last.wa_message_id ?? last.id}`,
@@ -177,8 +184,8 @@ export async function forwardPending(db: SupabaseClient, conversationId: string,
     sentAt: last.created_at,
   });
   await db.from("conversations").update({ recepcion_forwarded_until: last.created_at }).eq("id", conversationId);
-  await db.from("events").insert({ type: "recepcion.forwarded", actor: "system", conversation_id: conversationId, data: { messages: pending.length, attachments: attachments.length, project: opts.projectId ?? null } });
-  return pending.length;
+  await db.from("events").insert({ type: "recepcion.forwarded", actor: "system", conversation_id: conversationId, data: { messages: useful.length, attachments: attachments.length, project: opts.projectId ?? null } });
+  return useful.length;
 }
 
 /**
@@ -264,7 +271,15 @@ export async function runForwardJob(db: SupabaseClient, conversationId: string):
   }
 
   if (projectId) {
-    await forwardPending(db, conversationId, { projectId });
+    const sent = await forwardPending(db, conversationId, { projectId });
+    // Confirmación al personal: sabe que ha llegado y a qué expediente
+    if (sent > 0) {
+      await sendMessage(db, {
+        conversationId,
+        author: "system",
+        content: { type: "text", body: `✅ Guardado en el expediente ${projectCode ?? ""}. Para cambiar de expediente, escribe otro código (p. ej. WNK-2026-0001).`.replace("  ", " ") },
+      });
+    }
     return;
   }
 
