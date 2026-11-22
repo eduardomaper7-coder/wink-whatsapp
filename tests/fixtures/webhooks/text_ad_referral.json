@@ -1,0 +1,48 @@
+{
+  "object": "whatsapp_business_account",
+  "entry": [
+    {
+      "id": "102290129340398",
+      "changes": [
+        {
+          "value": {
+            "messaging_product": "whatsapp",
+            "metadata": {
+              "display_phone_number": "15550783881",
+              "phone_number_id": "106540352242922"
+            },
+            "contacts": [
+              {
+                "profile": {
+                  "name": "Lucía Martín"
+                },
+                "wa_id": "34612345678"
+              }
+            ],
+            "messages": [
+              {
+                "from": "34612345678",
+                "id": "wamid.REFERRAL0001",
+                "timestamp": "1763650000",
+                "type": "text",
+                "text": {
+                  "body": "Quiero más información"
+                },
+                "referral": {
+                  "source_url": "https://fb.me/abc",
+                  "source_id": "238470",
+                  "source_type": "ad",
+                  "headline": "Reformas integrales en Madrid",
+                  "body": "Pide tu visita",
+                  "media_type": "image",
+                  "ctwa_clid": "ARAkLkA8"
+                }
+              }
+            ]
+          },
+          "field": "messages"
+        }
+      ]
+    }
+  ]
+}

@@ -1,0 +1,47 @@
+{
+  "object": "whatsapp_business_account",
+  "entry": [
+    {
+      "id": "102290129340398",
+      "changes": [
+        {
+          "value": {
+            "messaging_product": "whatsapp",
+            "metadata": {
+              "display_phone_number": "15550783881",
+              "phone_number_id": "106540352242922"
+            },
+            "contacts": [
+              {
+                "profile": {
+                  "name": "Lucía Martín"
+                },
+                "wa_id": "34612345678"
+              }
+            ],
+            "messages": [
+              {
+                "from": "34612345678",
+                "id": "wamid.BUTTONREPLY0001",
+                "timestamp": "1763650000",
+                "type": "interactive",
+                "interactive": {
+                  "type": "button_reply",
+                  "button_reply": {
+                    "id": "slot_2026-11-24T10:00",
+                    "title": "Lun 24, 10:00"
+                  }
+                },
+                "context": {
+                  "from": "15550783881",
+                  "id": "wamid.OUTBOUND_SLOTS_0001"
+                }
+              }
+            ]
+          },
+          "field": "messages"
+        }
+      ]
+    }
+  ]
+}

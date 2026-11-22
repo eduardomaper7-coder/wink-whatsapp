@@ -1,0 +1,26 @@
+{
+  "entry": [
+    {
+      "id": "102290129340398",
+      "time": 1763650100,
+      "changes": [
+        {
+          "value": {
+            "event": "REJECTED",
+            "message_template_id": 1307282397617458,
+            "message_template_name": "retomar_conversacion",
+            "message_template_language": "es",
+            "reason": "INVALID_FORMAT",
+            "message_template_category": "UTILITY",
+            "rejection_info": {
+              "reason": "La variable {{1}} está al final del texto.",
+              "recommendation": "Añade texto después de la última variable."
+            }
+          },
+          "field": "message_template_status_update"
+        }
+      ]
+    }
+  ],
+  "object": "whatsapp_business_account"
+}

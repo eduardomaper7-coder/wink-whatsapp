@@ -1,0 +1,44 @@
+{
+  "object": "whatsapp_business_account",
+  "entry": [
+    {
+      "id": "102290129340398",
+      "changes": [
+        {
+          "value": {
+            "messaging_product": "whatsapp",
+            "metadata": {
+              "display_phone_number": "15550783881",
+              "phone_number_id": "106540352242922"
+            },
+            "contacts": [
+              {
+                "profile": {
+                  "name": "Lucía Martín"
+                },
+                "wa_id": "34612345678"
+              }
+            ],
+            "messages": [
+              {
+                "from": "34612345678",
+                "id": "wamid.DOCUMENT0001",
+                "timestamp": "1763650000",
+                "type": "document",
+                "document": {
+                  "caption": "Plano actual",
+                  "filename": "plano-vivienda.pdf",
+                  "mime_type": "application/pdf",
+                  "sha256": "4X8QhD8FOM9ZgwQyH1A2QmL8LkKbP3nJw3v7nWQmYbQ=",
+                  "id": "1003383421387257",
+                  "url": "https://lookaside.fbsbx.com/whatsapp_business/attachments/?mid=1003383421387257"
+                }
+              }
+            ]
+          },
+          "field": "messages"
+        }
+      ]
+    }
+  ]
+}
